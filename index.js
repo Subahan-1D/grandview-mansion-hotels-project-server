@@ -74,19 +74,35 @@ async function run() {
             sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
           })
           .send({ success: true });
-        console.log("Logout successful");
       } catch (err) {
         res.status(500).send(err);
       }
     });
 
     // Get all romms from db
-
     app.get("/rooms", async (req, res) => {
-      const result = await roomCollection.find().toArray()
-      res.send(result)
-
+      const category = req.query.category;
+      let query = {};
+      if (category && category !== "null") query = { category };
+      const result = await roomCollection.find(query).toArray();
+      res.send(result);
     });
+
+    // save a room add db
+    app.post("/room", async (req, res) => {
+      const roomData = req.body;
+      const result = await roomCollection.insertOne(roomData);
+      res.send(result);
+    });
+
+    // Get single data from data using _id
+    app.get("/room/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await roomCollection.findOne(query);
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
