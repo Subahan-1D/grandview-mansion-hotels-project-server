@@ -79,7 +79,7 @@ async function run() {
       }
     });
 
-    // Get all romms from db
+    // Get all rooms from db
     app.get("/rooms", async (req, res) => {
       const category = req.query.category;
       let query = {};
@@ -95,6 +95,14 @@ async function run() {
       res.send(result);
     });
 
+    // get all rooms for host
+    app.get("/my-listings/:email", async (req, res) => {
+      const email = req.params.email;
+      let query = { "host.email": email };
+      const result = await roomCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // Get single data from data using _id
     app.get("/room/:id", async (req, res) => {
       const id = req.params.id;
@@ -103,6 +111,8 @@ async function run() {
       res.send(result);
     });
 
+    // delete api
+    
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
