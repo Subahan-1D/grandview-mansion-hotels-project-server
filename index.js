@@ -3,7 +3,12 @@ const app = express();
 require("dotenv").config();
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const {
+  MongoClient,
+  ServerApiVersion,
+  ObjectId,
+  Timestamp,
+} = require("mongodb");
 const jwt = require("jsonwebtoken");
 
 const port = process.env.PORT || 8000;
@@ -50,6 +55,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const roomCollection = client.db("stayvista").collection("rooms");
+    const userCollection = client.db("stayvista").collection("users");
     // auth related api
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -78,16 +84,34 @@ async function run() {
         res.status(500).send(err);
       }
     });
+    // save s user data in db
+    app.put("/user", async (req, res) => {
+      const user = req.body;
+      // check if user already exits from db
+      const isExist = await userCollection.findOne({ email: user?.email });
+      if (isExist) return res.send(isExist);
+      // save user for the first time
+      const options = { upsert: true };
+      const query = { email: user?.email };
+      const updateDoc = {
+        $set: {
+          ...user,
+          timestamp: Date.now(),
+        },
+      };
+      const result = await userCollection.updateOne(query, updateDoc, options);
+      res.send(result);
+    });
 
     // Get all rooms from db
     app.get("/rooms", async (req, res) => {
       const category = req.query.category;
+      console.log(category);
       let query = {};
       if (category && category !== "null") query = { category };
       const result = await roomCollection.find(query).toArray();
       res.send(result);
     });
-
     // save a room add db
     app.post("/room", async (req, res) => {
       const roomData = req.body;
@@ -111,7 +135,7 @@ async function run() {
       res.send(result);
     });
 
-    // delete a room 
+    // delete a room
     app.delete("/room/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
