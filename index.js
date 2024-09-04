@@ -84,15 +84,26 @@ async function run() {
         res.status(500).send(err);
       }
     });
-    // save s user data in db
+    // save a user data in db
     app.put("/user", async (req, res) => {
       const user = req.body;
-      // check if user already exits from db
-      const isExist = await userCollection.findOne({ email: user?.email });
-      if (isExist) return res.send(isExist);
+      const query = { email: user?.email };
+      // check if user already exists in db
+      const isExist = await userCollection.findOne(query);
+      if (isExist) {
+        if (user.status === "Requested") {
+          // if existing user try to change his role
+          const result = await userCollection.updateOne(query, {
+            $set: { status: user?.status },
+          });
+          return res.send(result);
+        } else {
+          // if existing user login again
+          return res.send(isExist);
+        }
+      }
       // save user for the first time
       const options = { upsert: true };
-      const query = { email: user?.email };
       const updateDoc = {
         $set: {
           ...user,
@@ -102,7 +113,18 @@ async function run() {
       const result = await userCollection.updateOne(query, updateDoc, options);
       res.send(result);
     });
+    // part 3 get a user info by  email from db
+    app.get("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await userCollection.findOne({ email });
+      res.send(result);
+    });
 
+    // get all user data from db
+    app.get("/users", async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
     // Get all rooms from db
     app.get("/rooms", async (req, res) => {
       const category = req.query.category;
