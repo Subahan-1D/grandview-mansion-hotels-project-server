@@ -10,6 +10,7 @@ const {
   Timestamp,
 } = require("mongodb");
 const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.VITE_STRIPE_SECRET_KEY);
 
 const port = process.env.PORT || 8000;
 
@@ -26,6 +27,7 @@ app.use(cookieParser());
 
 // Verify Token Middleware
 const verifyToken = async (req, res, next) => {
+  console.log("Hello Admin");
   const token = req.cookies?.token;
   console.log(token);
   if (!token) {
@@ -54,6 +56,27 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
+    // verify admin
+    const verifyAdmin = async (req, res, next) => {
+      const user = req.user;
+      const query = { email: user?.email };
+      const result = await userCollection.findOne(query);
+      console.log(result?.role);
+      if (!result || result?.role !== "admin")
+        return res.status(403).send({ message: "forbidden access!!" });
+      next();
+    };
+    // verify host
+    const verifyHost = async (req, res, next) => {
+      const user = req.user;
+      const query = { email: user?.email };
+      const result = await userCollection.findOne(query);
+      console.log(result?.role);
+      if (!result || result?.role !== "host")
+        return res.status(403).send({ message: "forbidden access" });
+      next();
+    };
+
     const roomCollection = client.db("stayvista").collection("rooms");
     const userCollection = client.db("stayvista").collection("users");
     // auth related api
@@ -121,25 +144,25 @@ async function run() {
     });
 
     // get all user data from db
-    app.get("/users", async (req, res) => {
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
 
     // update user role
-    app.patch('/uses/update/:email', async (req,res)=>{
+    app.patch("/users/update/:email", async (req, res) => {
       const email = req.params.email;
       const user = req.body;
-      const query = {email}
-      const updateDoc ={
-        $set:{
+      const query = { email };
+      const updateDoc = {
+        $set: {
           ...user,
-          timestamp: Date.now()
-        }
-      }
-      const result = await userCollection.updateOne(query,updateDoc)
-      res.send(result)
-    })
+          timestamp: Date.now(),
+        },
+      };
+      const result = await userCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
     // Get all rooms from db
     app.get("/rooms", async (req, res) => {
       const category = req.query.category;
@@ -150,19 +173,24 @@ async function run() {
       res.send(result);
     });
     // save a room add db
-    app.post("/room", async (req, res) => {
+    app.post("/room", verifyToken, verifyHost, async (req, res) => {
       const roomData = req.body;
       const result = await roomCollection.insertOne(roomData);
       res.send(result);
     });
 
     // get all rooms for host
-    app.get("/my-listings/:email", async (req, res) => {
-      const email = req.params.email;
-      let query = { "host.email": email };
-      const result = await roomCollection.find(query).toArray();
-      res.send(result);
-    });
+    app.get(
+      "/my-listings/:email",
+      verifyToken,
+      verifyHost,
+      async (req, res) => {
+        const email = req.params.email;
+        let query = { "host.email": email };
+        const result = await roomCollection.find(query).toArray();
+        res.send(result);
+      }
+    );
 
     // Get single data from data using _id
     app.get("/room/:id", async (req, res) => {
@@ -173,7 +201,7 @@ async function run() {
     });
 
     // delete a room
-    app.delete("/room/:id", async (req, res) => {
+    app.delete("/room/:id", verifyToken, verifyHost, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await roomCollection.deleteOne(query);
