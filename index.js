@@ -257,6 +257,22 @@ async function run() {
       res.send(result);
     });
 
+    // get all room booking for guest
+    app.get("/my-bookings/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const query = { "guest.email": email };
+      const result = await bookingCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // delete a my booking data
+    app.delete("/booking/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await bookingCollection.deleteOne(query);
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
