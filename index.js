@@ -76,9 +76,10 @@ async function run() {
         return res.status(403).send({ message: "forbidden access" });
       next();
     };
-
-    const roomCollection = client.db("stayvista").collection("rooms");
-    const userCollection = client.db("stayvista").collection("users");
+    const db = client.db("stayvista");
+    const roomCollection = db.collection("rooms");
+    const userCollection = db.collection("users");
+    const bookingCollection = db.collection("bookings");
     // auth related api
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -208,23 +209,53 @@ async function run() {
       res.send(result);
     });
 
-    // create payment intent stripe 
+    // create payment intent stripe
     // 1st step
-      app.post("/create-payment-intent", async (req, res) => {
-        const { price } = req.body;
-        const amount = parseInt(price * 100);
-        console.log(amount, "inside the intent");
-        const paymentIntent = await stripe.paymentIntents.create({
-          amount: amount,
-          currency: "usd",
-          automatic_payment_methods: {
-            enabled: true,
-          },
-        }); 
-         res.send({
-          clientSecret: paymentIntent.client_secret,
-        });
+    app.post("/create-payment-intent", verifyToken, async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      console.log(amount, "inside the intent");
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        automatic_payment_methods: {
+          enabled: true,
+        },
       });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    // 2nd data save booking  collection
+    app.post("/booking", verifyToken, async (req, res) => {
+      const bookingData = req.body;
+      // save room booking info from db
+      const result = await bookingCollection.insertOne(bookingData);
+      // change room availability status
+      // const roomId = bookingData?.roomId;
+      // const query = {_id:new ObjectId(roomId)}
+      // const updateDoc ={
+      //   $set:{
+      //     booked:true,
+      //   }
+      // }
+      // const updateRoom = await roomCollection.updateOne(query,updateDoc);
+      // console.log(updateRoom)
+      res.send(result);
+    });
+
+    // update room status
+    app.patch("/room/status/:id", async (req, res) => {
+      const id = req.params.id;
+      const status = req.body.status;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: { booked: status },
+      };
+      const result = await roomCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
