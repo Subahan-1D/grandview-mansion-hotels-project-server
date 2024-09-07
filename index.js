@@ -1,6 +1,5 @@
 const express = require("express");
 const app = express();
-require("dotenv").config();
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const {
@@ -10,10 +9,11 @@ const {
   Timestamp,
 } = require("mongodb");
 const jwt = require("jsonwebtoken");
-const stripe = require("stripe")(process.env.VITE_STRIPE_SECRET_KEY);
-
 const port = process.env.PORT || 8000;
 
+// config
+require("dotenv").config();
+const stripe = require("stripe")(process.env.VITE_STRIPE_SECRET_KEY);
 // middleware
 const corsOptions = {
   origin: ["http://localhost:5173", "http://localhost:5174"],
@@ -207,6 +207,24 @@ async function run() {
       const result = await roomCollection.deleteOne(query);
       res.send(result);
     });
+
+    // create payment intent stripe 
+    // 1st step
+      app.post("/create-payment-intent", async (req, res) => {
+        const { price } = req.body;
+        const amount = parseInt(price * 100);
+        console.log(amount, "inside the intent");
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: "usd",
+          automatic_payment_methods: {
+            enabled: true,
+          },
+        }); 
+         res.send({
+          clientSecret: paymentIntent.client_secret,
+        });
+      });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
