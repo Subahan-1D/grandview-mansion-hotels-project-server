@@ -258,9 +258,16 @@ async function run() {
     });
 
     // get all room booking for guest
-    app.get("/my-bookings/:email", verifyToken, async (req, res) => {
+    app.get("/my-bookings/:email", verifyToken,  async (req, res) => {
       const email = req.params.email;
       const query = { "guest.email": email };
+      const result = await bookingCollection.find(query).toArray();
+      res.send(result);
+    });
+    // get all room booking for host
+    app.get("/manage-bookings/:email", verifyToken, verifyHost, async (req, res) => {
+      const email = req.params.email;
+      const query = { "host.email": email };
       const result = await bookingCollection.find(query).toArray();
       res.send(result);
     });
