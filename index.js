@@ -258,19 +258,24 @@ async function run() {
     });
 
     // get all room booking for guest
-    app.get("/my-bookings/:email", verifyToken,  async (req, res) => {
+    app.get("/my-bookings/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { "guest.email": email };
       const result = await bookingCollection.find(query).toArray();
       res.send(result);
     });
     // get all room booking for host
-    app.get("/manage-bookings/:email", verifyToken, verifyHost, async (req, res) => {
-      const email = req.params.email;
-      const query = { "host.email": email };
-      const result = await bookingCollection.find(query).toArray();
-      res.send(result);
-    });
+    app.get(
+      "/manage-bookings/:email",
+      verifyToken,
+      verifyHost,
+      async (req, res) => {
+        const email = req.params.email;
+        const query = { "host.email": email };
+        const result = await bookingCollection.find(query).toArray();
+        res.send(result);
+      }
+    );
 
     // delete a my booking data
     app.delete("/booking/:id", verifyToken, async (req, res) => {
@@ -280,6 +285,42 @@ async function run() {
       res.send(result);
     });
 
+    // sales admin statics page
+    app.get("/admin-stat", async (req, res) => {
+      const bookingDetails = await bookingCollection
+        .find(
+          {},
+          {
+            projection: {
+              date: 1,
+              price: 1,
+            },
+          }
+        )
+        .toArray();
+      const totalUsers = await userCollection.countDocuments();
+      const totalRooms = await roomCollection.countDocuments();
+      const totalPrice = bookingDetails.reduce(
+        (sum, booking) => sum + booking.price,
+        0
+      );
+      const chartData = bookingDetails.map((booking) => {
+        const day = new Date(booking.date).getDate();
+        const month = new Date(booking.date).getMonth() + 1;
+        const data = [`${day} / ${month}`, booking?.price];
+        return data;
+      });
+      chartData.unshift(["Day", "Sales"]);
+      console.log(chartData);
+      console.log(bookingDetails);
+      res.send({
+        totalUsers,
+        totalRooms,
+        totalBookings: bookingDetails.length,
+        totalPrice,
+        chartData,
+      });
+    });
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
