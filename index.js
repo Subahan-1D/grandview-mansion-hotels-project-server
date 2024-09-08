@@ -414,6 +414,18 @@ async function run() {
       });
     });
 
+    // last update room data
+    app.put("/room/update/:id", verifyToken, verifyHost, async (req, res) => {
+      const id = req.params.id;
+      const roomData = req.body;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: roomData,
+      };
+      const result = await roomCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
