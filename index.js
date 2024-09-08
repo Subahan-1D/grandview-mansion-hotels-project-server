@@ -360,13 +360,60 @@ async function run() {
       console.log(chartData);
       console.log(bookingDetails);
       res.send({
-        hostSince : timestamp,
+        hostSince: timestamp,
         totalRooms,
         totalBookings: bookingDetails.length,
         totalPrice,
         chartData,
       });
     });
+    // sales guest statics page
+    app.get("/guest-stat", verifyToken, async (req, res) => {
+      const { email } = req.user;
+      const bookingDetails = await bookingCollection
+        .find(
+          { "guest.email": email },
+          {
+            projection: {
+              date: 1,
+              price: 1,
+            },
+          }
+        )
+        .toArray();
+      const totalRooms = await roomCollection.countDocuments({
+        "host.email": email,
+      });
+      const totalPrice = bookingDetails.reduce(
+        (sum, booking) => sum + booking.price,
+        0
+      );
+      const { timestamp } = await userCollection.findOne(
+        { email },
+        {
+          projection: {
+            timestamp: 1,
+          },
+        }
+      );
+      const chartData = bookingDetails.map((booking) => {
+        const day = new Date(booking.date).getDate();
+        const month = new Date(booking.date).getMonth() + 1;
+        const data = [`${day} / ${month}`, booking?.price];
+        return data;
+      });
+      chartData.unshift(["Day", "Sales"]);
+      console.log(chartData);
+      console.log(bookingDetails);
+      res.send({
+        hostSince: timestamp,
+        totalRooms,
+        totalBookings: bookingDetails.length,
+        totalPrice,
+        chartData,
+      });
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
