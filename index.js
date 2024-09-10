@@ -173,6 +173,11 @@ async function run() {
         },
       };
       const result = await userCollection.updateOne(query, updateDoc, options);
+      // welcome to new user 
+      sendEmail(user?.email, {
+        subject: "Welcome to Grandview Mansion Hotels!",
+        message: `Hope you will find you destination.`,
+      });
       res.send(result);
     });
     // part 3 get a user info by  email from db
