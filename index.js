@@ -1,8 +1,9 @@
 const express = require("express");
 const app = express();
-const cors = require("cors");
+require("dotenv").config();
 const nodemailer = require("nodemailer");
 const cookieParser = require("cookie-parser");
+const cors = require("cors");
 const {
   MongoClient,
   ServerApiVersion,
@@ -10,19 +11,17 @@ const {
   Timestamp,
 } = require("mongodb");
 const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.VITE_STRIPE_SECRET_KEY);
 const port = process.env.PORT || 8000;
 
 // config
-require("dotenv").config();
-const stripe = require("stripe")(process.env.VITE_STRIPE_SECRET_KEY);
 // middleware
 const corsOptions = {
-  origin: ["http://localhost:5173", "http://localhost:5174"],
+  origin: ["http://localhost:5173", "https://marnstack-vista-project.web.app"],
   credentials: true,
   optionSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
-
 app.use(express.json());
 app.use(cookieParser());
 
@@ -471,7 +470,7 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
@@ -482,9 +481,9 @@ async function run() {
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
-  res.send("Hello from StayVista Server..");
+  res.send("Hello Grand View Hotels Server..");
 });
 
 app.listen(port, () => {
-  console.log(`StayVista is running on port ${port}`);
+  console.log(`Grand View Hotels is running on port ${port}`);
 });
